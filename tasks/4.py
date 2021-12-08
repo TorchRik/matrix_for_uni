@@ -24,5 +24,5 @@ for permutation in permutations:
     if count == 5:
         print(permutation, s)
         answer += s * get_sign(permutation)
-print(answer)
+print("Ответ:", answer)
 

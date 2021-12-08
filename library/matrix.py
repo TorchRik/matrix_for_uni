@@ -165,3 +165,7 @@ class Matrix:
         answer.append(1)
         return Polynomial(answer)
 
+    @staticmethod
+    def get_id(n):
+        rows = [[1 if i == j else 0 for j in range(n)] for i in range(n)]
+        return Matrix(rows)
