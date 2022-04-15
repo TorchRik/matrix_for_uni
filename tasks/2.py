@@ -14,3 +14,4 @@ print("X = C * D^(-1) * A - B")
 print("X = ")
 X = C * D.get_reverse() * A - B
 print(X)
+

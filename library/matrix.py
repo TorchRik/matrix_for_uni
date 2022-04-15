@@ -103,8 +103,9 @@ class Matrix:
         out = ""
         for row in self.rows:
             for i in row:
-                out += str(i) + " "
-            out += "\n"
+                out += str(i) + " & "
+            out = out[:-2]
+            out += "\\\\\n"
         return out
 
     def get_determinant(self):
