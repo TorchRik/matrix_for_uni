@@ -1,2 +1,1 @@
-# matrix_for_uni
-# matrix_for_uni
+# Matrix and polynomial implementation to solve linear algebra problems
