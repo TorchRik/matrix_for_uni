@@ -2,13 +2,7 @@ from math import gcd
 
 from library.permutations import create_all_permutations, get_sign
 from library.polynomial import Polynomial
-
-
-def sign_integer(a):
-    if a < 0:
-        return -1
-    else:
-        return 1
+from library.rationals import Rational, sign
 
 
 def get_combinations(n, m, answer, now=(), index=0):
@@ -21,8 +15,71 @@ def get_combinations(n, m, answer, now=(), index=0):
     get_combinations(n, m, answer, now, index+1)
 
 
+class NeNpArray:
+    def __init__(self, values, is_rational=True):
+        if is_rational:
+            self._values = [Rational(i) for i in values]
+        else:
+            self._values = [i for i in values]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __setitem__(self, key, value):
+        self._values[key] = value
+
+    def __getitem__(self, item):
+        return self._values[item]
+
+    def __add__(self, other):
+        if isinstance(other, NeNpArray):
+            ans = NeNpArray(self._values)
+            if len(self) != len(other):
+                raise ValueError("Can not add")
+            for i in range(len(self)):
+                ans[i] += other[i]
+            return ans
+        else:
+            raise TypeError("Incorrect adding")
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __mul__(self, other):
+        if isinstance(other, int) or isinstance(other, Rational):
+            ans = NeNpArray(self._values)
+            for i in range(len(self)):
+                ans[i] *= other
+            return ans
+        else:
+            raise TypeError("Incorrect multiplication")
+
+    def __truediv__(self, other):
+        if isinstance(other, int) or isinstance(other, Rational):
+            ans = NeNpArray(self._values)
+            for i in range(len(self)):
+                ans[i] /= other
+            return ans
+        else:
+            raise TypeError("Incorrect division")
+
+    def __sub__(self, other):
+        if isinstance(other, NeNpArray):
+            if len(self) != len(other):
+                raise ValueError("Can not sub")
+            ans = NeNpArray(self._values)
+            for i in range(len(self)):
+                ans[i] -= other[i]
+            return ans
+        else:
+            raise TypeError("Incorrect adding")
+
+    def __repr__(self):
+        return str(self._values)
+
+
 class Matrix:
-    def __init__(self, rows):
+    def __init__(self, rows, is_rational=True):
         self.n = len(rows)
         if self.n == 0:
             self.m = 0
@@ -32,7 +89,7 @@ class Matrix:
         for row in rows:
             if len(row) != self.m:
                 raise AttributeError("Rows should have same size")
-        self.rows = [row[:] for row in rows]
+        self.rows = [NeNpArray(row, is_rational) for row in rows]
 
     def __getitem__(self, index):
         return self.rows[index]
@@ -50,12 +107,14 @@ class Matrix:
                     rows[i][j] = self[i][j] + other[i][j]
             return Matrix(rows)
 
-        elif isinstance(other, int) or isinstance(other, float):
+        elif isinstance(other, int) or isinstance(other, float) or isinstance(other, Rational):
             rows = [[0 for i in range(self.m)] for i in range(self.n)]
             for i in range(self.n):
                 for j in range(self.m):
                     rows[i][j] = other + self[i][j]
             return Matrix(rows)
+        else:
+            raise TypeError
 
     def __sub__(self, other):
         if isinstance(other, Matrix):
@@ -72,6 +131,8 @@ class Matrix:
                 for j in range(self.m):
                     rows[i][j] = self[i][j] - other
             return Matrix(rows)
+        else:
+            raise TypeError
 
     def __mul__(self, other):
         if isinstance(other, Matrix):
@@ -83,20 +144,24 @@ class Matrix:
                     for k in range(self.m):
                         rows[i][j] += self[i][k] * other[k][j]
             return Matrix(rows)
-        elif isinstance(other, int) or isinstance(other, float):
+        elif isinstance(other, int) or isinstance(other, float) or isinstance(other, Rational):
             rows = [[0 for i in range(self.m)] for i in range(self.n)]
             for i in range(self.n):
                 for j in range(self.m):
                     rows[i][j] = other * self[i][j]
             return Matrix(rows)
+        else:
+            raise TypeError
 
     def __truediv__(self, other):
-        if isinstance(other, int) or isinstance(other, float):
+        if isinstance(other, int) or isinstance(other, float) or isinstance(other, Rational):
             rows = [[0 for i in range(self.m)] for i in range(self.n)]
             for i in range(self.n):
                 for j in range(self.m):
                     rows[i][j] = self[i][j] / other
             return Matrix(rows)
+        else:
+            raise TypeError
 
     def __eq__(self, other):
         return self.rows == other.rows
@@ -151,7 +216,7 @@ class Matrix:
                 j2 = j1 if j1 < j else j1 - 1
                 new_rows[i2][j2] = self[i1][j1]
         mult = -1 if (i + j) % 2 else 1
-        return mult * Matrix(new_rows).get_determinant()
+        return Matrix(new_rows).get_determinant() * mult
 
     def get_attached_matrix(self):
         rows = [[0 for i in range(self.m)] for i in range(self.n)]
@@ -195,19 +260,7 @@ class Matrix:
         rows = [[1 if i == j else 0 for j in range(n)] for i in range(n)]
         return Matrix(rows)
 
-    def multiply_row_by_num(self, row_index, x):
-        if row_index >= self.n:
-            raise ValueError("Invalid index")
-
-        for j in range(self.m):
-            self.rows[row_index][j] *= x
-
-    def do_gaus_with_integer_matrix_and_get_rank(self):
-        for i in range(self.n):
-            for j in range(self.m):
-                if not isinstance(self[i][j], int):
-                    raise ValueError("Matrix should contain only integers")
-
+    def _do_gaus_with_rational_matrix_and_get_rank(self):
         A = self.__copy__()
         current_row_index = 0
         for j in range(A.m):
@@ -219,18 +272,25 @@ class Matrix:
                     break
 
             if A[current_row_index][j] != 0:
+                A[current_row_index] *= 1 / A[current_row_index][j]
                 for i in range(A.n):
                     if i == current_row_index or A[i][j] == 0:
                         continue
-                    g = gcd(A[current_row_index][j], A[i][j])
-                    mult_1 = abs(A[current_row_index][j])
-                    mult_2 = abs(A[i][j]) // g
-                    A.multiply_row_by_num(i, mult_1 // g)
-                    s = sign_integer(A[current_row_index][j]) * sign_integer(A[i][j])
-                    for u in range(A.m):
-                        A[i][u] -= A[current_row_index][u] * s * mult_2
+                    A[i] -= A[current_row_index] * A[i][j]
                 current_row_index += 1  # increase such as we found non-zero row
         return A, current_row_index
 
+    def get_gaus_matrix(self):
+        return self._do_gaus_with_rational_matrix_and_get_rank()[0]
+
     def get_rank(self):
-        return self.do_gaus_with_integer_matrix_and_get_rank()[1]
+        return self._do_gaus_with_rational_matrix_and_get_rank()[1]
+
+    def get_transposed(self):
+        ans = Matrix([[0 for i in range(self.n)] for i in range(self.m)])
+        for i in range(self.n):
+            for j in range(self.m):
+                ans[j][i] = self[i][j]
+        return ans
+
+
